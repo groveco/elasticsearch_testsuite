@@ -17,7 +17,7 @@ class SearchResultsVolume():
 
         self.db.execute("CREATE TABLE %s (id int, count int default 0, processed int default 0)" % self.volume_name)
         self.db.execute("CREATE TABLE %s (id serial, result_id int, order_id int, item_id int, result text, UNIQUE (result_id, item_id))" % self.volume_items_name)
-        self.db.execute("INSERT INTO %s SELECT id, count, 0 as processed from %s" % (self.volume_name, self.queries_volume_name))
+        self.db.execute("INSERT INTO %s SELECT id, 0 as count, 0 as processed from %s" % (self.volume_name, self.queries_volume_name))
 
     @property
     def volume_name(self):
