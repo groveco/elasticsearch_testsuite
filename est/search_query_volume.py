@@ -10,7 +10,10 @@ class SearchQueryVolume():
 
     def create_schema(self, tag, clobber=False):
         if clobber:
-            self.db.execute('DROP TABLE %s' % self.volume_name)
+            try:
+                self.db.execute('DROP TABLE %s' % self.volume_name)
+            except:
+                pass
         self.db.execute("CREATE TABLE %s (id int, count int default 0, query varchar(255), q varchar(255))" % self.volume_name)
 
     def do_import(self, file, clobber):

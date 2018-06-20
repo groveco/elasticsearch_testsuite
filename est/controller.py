@@ -4,7 +4,7 @@ import subprocess
 from db import DbConnection
 
 
-def run_controller(search_results_tag):
+def run_controller(search_queries_tag, search_results_tag):
     db = DbConnection()
 
     total = db.execute("select count(*) as total from search_results_volume_%s" % search_results_tag).first()['total']
@@ -25,7 +25,7 @@ def run_controller(search_results_tag):
         for allowed in xrange(1, 8):
             if len(batches) > 0:
                 batch = batches.pop()
-                p = subprocess.Popen(["python", "worker.py", "--tag", search_results_tag, "--ids"] + batch)
+                p = subprocess.Popen(["python", "worker.py", "--results_tag", search_results_tag, "--queries_tag", search_queries_tag, "--ids"] + batch)
                 procs.append(p)
 
         for p in procs:
@@ -34,7 +34,8 @@ def run_controller(search_results_tag):
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument('--search_results_tag', required=True, help='Search Results Volume Tag')
+    p.add_argument('--queries_tag', required=True, help='Search Results Volume Tag to store results')
+    p.add_argument('--results_tag', required=True, help='Search Results Queries Volume to search from')
     args = p.parse_args()
 
-    run_controller(args.search_results_tag)
+    run_controller(args.queries_tag, args.results_tag)

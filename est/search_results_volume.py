@@ -3,8 +3,9 @@ from db import DbConnection
 
 
 class SearchResultsVolume():
-    def __init__(self, tag):
-        self.tag = tag
+    def __init__(self, queries_tag, results_tag):
+        self.queries_tag = queries_tag
+        self.results_tag = results_tag
         self.db = DbConnection()
 
     def create_schema(self, clobber=False):
@@ -21,21 +22,22 @@ class SearchResultsVolume():
 
     @property
     def volume_name(self):
-        return 'search_results_volume_%s' % self.tag
+        return 'search_results_volume_%s' % self.results_tag
 
     @property
     def volume_items_name(self):
-        return 'search_results_items_volume_%s' % self.tag
+        return 'search_results_items_volume_%s' % self.results_tag
 
     @property
     def queries_volume_name(self):
-        return 'search_queries_volume_%s' % self.tag
+        return 'search_queries_volume_%s' % self.queries_tag
 
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument('--tag', required=True, help='Versioning Tag')
+    p.add_argument('--queries_tag', required=True, help='Search Queries Volume Tag')
+    p.add_argument('--results_tag', required=True, help='Search Results Volume Tag')
     args = p.parse_args()
 
-    volume = SearchResultsVolume(args.tag)
+    volume = SearchResultsVolume(args.queries_tag, args.results_tag)
     volume.create_schema(True)
