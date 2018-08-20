@@ -22,3 +22,6 @@ python search_results_volume.py  --queries_tag test --results_tag test
 
 ### Run searches from the queries volume 'test' and store the results in the results volume 'test'
 python controller.py --queries_tag test --results_tag test
+
+### Generate a search results excel report by comparing two search volumes.
+python search_results_report.py --queries_tag test --results_a_tag results1 --results_b_tag results2 --products_csv products.csv --filename report.xls
