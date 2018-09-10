@@ -2,3 +2,4 @@ sqlalchemy
 requests
 psycopg2
 xlsxwriter
+six==1.11.0
