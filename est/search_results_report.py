@@ -6,7 +6,7 @@ import xlsxwriter
 
 class SearchResultsReport():
 
-    def __init__(self, queries_tag, results_a_tag, results_b_tag, search_items_csv_path):
+    def __init__(self, queries_tag, results_a_tag, results_b_tag, search_items_csv_path, sample='top', sample_size=300):
         self.results_a_tag = results_a_tag
         self.results_b_tag = results_b_tag
         self.queries_tag = queries_tag
@@ -14,6 +14,16 @@ class SearchResultsReport():
         self.volumes = [self.results_a_tag, self.results_b_tag]
         self.db = DbConnection()
         self.load_search_items(self.search_items_csv_path)
+        self.sample = self.get_sample_value(sample)
+        self.sample_size = sample_size
+
+    def get_sample_value(self, sample_key):
+        sample_types = {
+            'top': 'count DESC',
+            'bottom': 'count ASC',
+            'random': 'random()'
+        }
+        return sample_types.get(sample_key, 'count DESC')
 
     def load_search_items(self, search_items_csv_path):
         self.search_items = {}
@@ -23,7 +33,7 @@ class SearchResultsReport():
                 self.search_items[int(row['id'])] = row
 
     def create(self, filename):
-        options = {'top': 300, 'diff': False}
+        options = {self.sample: self.sample_size, 'diff': False}
 
         workbook = xlsxwriter.Workbook(filename)
         ws_search = workbook.add_worksheet('Search Results')
@@ -40,15 +50,15 @@ class SearchResultsReport():
         for e, engine in enumerate(self.volumes):
             ws_row = data_row
 
-            if 'top' in options:
-                rows = self.db.execute("select id, query, count from search_queries_volume_%s where id in (select id from search_results_volume_%s where processed = 1) order by count desc limit %s" % (self.queries_tag, engine, options['top']))
+            if self.sample in options:
+                rows = self.db.execute("select id, query, count from search_queries_volume_%s where id in (select id from search_results_volume_%s where processed = 1) order by %s limit %s" % (self.queries_tag, engine, self.sample, self.sample_size))
 
             for row in rows:
                 ws_search.write(ws_row, 0, row['query'] + ' (' + str(row['count']) + ')')
                 result_items = self.db.execute("select item_id, order_id from search_results_items_volume_%s where result_id = %d order by order_id asc" % (engine, row['id']))
 
                 for item in result_items:
-                    if self.search_items.has_key(item['item_id']):
+                    if item['item_id'] in self.search_items:
                         name = self.search_items[item['item_id']]['name']
                     else:
                         name = 'None'
@@ -60,7 +70,7 @@ class SearchResultsReport():
                     ws_row += 1
 
                 max = self._get_max_col_length(self.volumes, row['id'], options['diff'])
-                ws_row += max - items.rowcount + 1
+                ws_row += max - result_items.rowcount + 1
 
         workbook.close()
 
@@ -83,7 +93,9 @@ if __name__ == "__main__":
     p.add_argument('--results_b_tag', required=True, help='Search Results Queries Volume B to report from')
     p.add_argument('--search_items_csv', required=True, help='search_items csv file')
     p.add_argument('--filename', required=True, help='Report filename')
+    p.add_argument('--sample', required=False, help='Sample top, bottom, or random queries.  Default value is top.')
+    p.add_argument('--size', required=False, help='Sample size for queries volumes.  Default value is 300')
     args = p.parse_args()
 
-    report = SearchResultsReport(args.queries_tag, args.results_a_tag, args.results_b_tag, args.search_items_csv)
+    report = SearchResultsReport(args.queries_tag, args.results_a_tag, args.results_b_tag, args.search_items_csv, args.sample, args.size)
     report.create(args.filename)
