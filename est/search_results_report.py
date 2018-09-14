@@ -6,14 +6,14 @@ import xlsxwriter
 
 class SearchResultsReport():
 
-    def __init__(self, queries_tag, results_a_tag, results_b_tag, products_csv_path, sample='top', sample_size=300):
+    def __init__(self, queries_tag, results_a_tag, results_b_tag, search_items_csv_path, sample='top', sample_size=300):
         self.results_a_tag = results_a_tag
         self.results_b_tag = results_b_tag
         self.queries_tag = queries_tag
-        self.products_csv_path = products_csv_path
+        self.search_items_csv_path = search_items_csv_path
         self.volumes = [self.results_a_tag, self.results_b_tag]
         self.db = DbConnection()
-        self.load_products(self.products_csv_path)
+        self.load_search_items(self.search_items_csv_path)
         self.sample = self.get_sample_value(sample)
         self.sample_size = sample_size
 
@@ -25,12 +25,12 @@ class SearchResultsReport():
         }
         return sample_types.get(sample_key, 'count DESC')
 
-    def load_products(self, products_csv_path):
-        self.products = {}
-        with open(products_csv_path) as p_fp:
+    def load_search_items(self, search_items_csv_path):
+        self.search_items = {}
+        with open(search_items_csv_path) as p_fp:
             preader = csv.DictReader(p_fp, delimiter="\t")
             for row in preader:
-                self.products[int(row['id'])] = row
+                self.search_items[int(row['id'])] = row
 
     def create(self, filename):
         options = {self.sample: self.sample_size, 'diff': False}
@@ -43,7 +43,7 @@ class SearchResultsReport():
 
         for e, engine in enumerate(self.volumes):
             ws_search.write(ws_row, e+1, engine)
-          
+
         ws_row += 2
         data_row = ws_row
 
@@ -55,24 +55,22 @@ class SearchResultsReport():
 
             for row in rows:
                 ws_search.write(ws_row, 0, row['query'] + ' (' + str(row['count']) + ')')
-                items = self.db.execute("select item_id, order_id from search_results_items_volume_%s where result_id = %d order by order_id asc" % (engine, row['id']))
+                result_items = self.db.execute("select item_id, order_id from search_results_items_volume_%s where result_id = %d order by order_id asc" % (engine, row['id']))
 
-                for item in items:
-                    if item['item_id'] in self.products:
-                        name = self.products[item['item_id']]['name']
+                for item in result_items:
+                    if item['item_id'] in self.search_items:
+                        name = self.search_items[item['item_id']]['name']
                     else:
                         name = 'None'
 
-                    if item['item_id'] in self.products:
-                        brand = self.products[item['item_id']]['brand']
-                    else:
-                        brand = 'None'
+                    if item['item_id'] in self.search_items:
+                        description = self.search_items[item['item_id']]['description'] if self.search_items[item['item_id']]['description'] else ''
 
-                    ws_search.write(ws_row, e+1, '(' + str(item['order_id']) + ') ' + str(name) + ' (' + brand + ')' + ' (' + str(item['item_id']) + ')')
+                    ws_search.write(ws_row, e+1, '(' + str(item['order_id']) + ') ' + str(name) + ' (' + description + ')' + ' (' + str(item['item_id']) + ')')
                     ws_row += 1
 
                 max = self._get_max_col_length(self.volumes, row['id'], options['diff'])
-                ws_row += max - items.rowcount + 1
+                ws_row += max - result_items.rowcount + 1
 
         workbook.close()
 
@@ -93,11 +91,11 @@ if __name__ == "__main__":
     p.add_argument('--queries_tag', required=True, help='Search Results Volume Tag to report results')
     p.add_argument('--results_a_tag', required=True, help='Search Results Queries Volume A to report from')
     p.add_argument('--results_b_tag', required=True, help='Search Results Queries Volume B to report from')
-    p.add_argument('--products_csv', required=True, help='Products csv file')
+    p.add_argument('--search_items_csv', required=True, help='search_items csv file')
     p.add_argument('--filename', required=True, help='Report filename')
     p.add_argument('--sample', required=False, help='Sample top, bottom, or random queries.  Default value is top.')
     p.add_argument('--size', required=False, help='Sample size for queries volumes.  Default value is 300')
     args = p.parse_args()
 
-    report = SearchResultsReport(args.queries_tag, args.results_a_tag, args.results_b_tag, args.products_csv, args.sample, args.size)
+    report = SearchResultsReport(args.queries_tag, args.results_a_tag, args.results_b_tag, args.search_items_csv, args.sample, args.size)
     report.create(args.filename)
